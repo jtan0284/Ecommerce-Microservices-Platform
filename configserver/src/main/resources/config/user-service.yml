@@ -1,0 +1,29 @@
+spring:
+  mongodb:
+    uri: ${MONGO_URI}
+    database: userdb
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+keycloak:
+  admin:
+    username: user
+    password: user
+    server-url: http://localhost:8443
+    realm: ecom-app
+    : admin-cli
+    client-uid: 526b00af-bbd5-419a-949d-b15da4cf18df
+
+server:
+  port: 8082

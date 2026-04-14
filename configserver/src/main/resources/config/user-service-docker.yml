@@ -1,0 +1,29 @@
+spring:
+  mongodb:
+    uri: ${MONGO_URI}
+    database: userdb
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST}
+    connection-timeout: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+keycloak:
+  admin:
+    username: your_keycloak_service_user
+    password: your_keycloak_service_password
+    server-url: http://your-keycloak-host:8080
+    realm: your_realm
+    client-id: your_client_id
+    client-uid: your_client_uid
+
+server:
+  port: 8082

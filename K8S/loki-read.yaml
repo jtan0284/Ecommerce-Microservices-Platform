@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: read
+  namespace: ecommerce
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: read
+      loki-part: loki
+  template:
+    metadata:
+      labels:
+        app: read
+        loki-part: loki
+    spec:
+      containers:
+        - name: loki-read
+          image: grafana/loki:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-config.file=/etc/loki/loki-config.yaml"
+            - "-target=read"
+          ports:
+            - containerPort: 3100
+            - containerPort: 7946
+          volumeMounts:
+            - name: loki-config
+              mountPath: /etc/loki
+            - name: loki-data
+              mountPath: /loki
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 40
+            periodSeconds: 15
+      volumes:
+        - name: loki-config
+          configMap:
+            name: loki-config
+        - name: loki-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: read
+  namespace: ecommerce
+spec:
+  selector:
+    app: read
+  ports:
+    - name: http
+      port: 3100
+      targetPort: 3100
+    - name: gossip
+      port: 7946
+      targetPort: 7946

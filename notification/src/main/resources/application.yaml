@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: notification
+  cloud:
+    function:
+      definition: orderCreated
+    stream:
+      function:
+        definition: orderCreated
+      bindings:
+        orderCreated-in-0:
+          destination: order.exchange
+          group: notification-group
+          content-type: application/json
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:guest}
+    connection-timeout: 30000
+
+server:
+  port: 8084

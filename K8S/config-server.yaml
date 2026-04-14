@@ -1,0 +1,241 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-common-secret
+  namespace: ecommerce
+type: Opaque
+stringData:
+  DB_USER: your_db_user
+  DB_PASSWORD: your_db_password
+  MONGO_URI: mongodb://mongo:27017/userdb
+  RABBITMQ_HOST: your_rabbitmq_host
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USERNAME: your_rabbitmq_username
+  RABBITMQ_PASSWORD: your_rabbitmq_password
+  RABBITMQ_VHOST: your_rabbitmq_vhost
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-server-native-config
+  namespace: ecommerce
+data:
+  gateway-service-docker.yaml: |
+    spring:
+      cloud:
+        gateway:
+          routes:
+            - id: user-service
+              uri: http://user-service:8082
+              predicates:
+                - Path=/api/users/**
+            - id: product-service
+              uri: http://product-service:8081
+              predicates:
+                - Path=/api/products/**
+            - id: order-service
+              uri: http://order-service:8083
+              predicates:
+                - Path=/api/orders/**
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: http://auth.localtest.me/realms/ecom-app
+              jwk-set-uri: http://keycloak:8080/realms/ecom-app/protocol/openid-connect/certs
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+    server:
+      port: 8080
+
+  user-service-docker.yaml: |
+    spring:
+      mongodb:
+        uri: ${MONGO_URI}
+        database: userdb
+      rabbitmq:
+        host: ${RABBITMQ_HOST}
+        port: ${RABBITMQ_PORT}
+        username: ${RABBITMQ_USERNAME}
+        password: ${RABBITMQ_PASSWORD}
+        virtual-host: ${RABBITMQ_VHOST}
+        connection-timeout: 30000
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+    keycloak:
+      admin:
+        username: user
+        password: user
+        server-url: http://keycloak:8080
+        realm: ecom-app
+        : admin-cli
+        client-uid: 526b00af-bbd5-419a-949d-b15da4cf18df
+    server:
+      port: 8082
+
+  product-service-docker.yaml: |
+    spring:
+      datasource:
+        url: jdbc:postgresql://postgres:5432/productdb
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
+      jpa:
+        database: POSTGRESQL
+        show-sql: true
+        hibernate:
+          ddl-auto: update
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+        properties:
+          hibernate:
+            format_sql: true
+      rabbitmq:
+        host: ${RABBITMQ_HOST}
+        port: ${RABBITMQ_PORT}
+        username: ${RABBITMQ_USERNAME}
+        password: ${RABBITMQ_PASSWORD}
+        virtual-host: ${RABBITMQ_VHOST}
+        connection-timeout: 30000
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+    app:
+      message: "Hello Product"
+    server:
+      port: 8081
+
+  order-service-docker.yaml: |
+    spring:
+      datasource:
+        url: jdbc:postgresql://postgres:5432/orderdb
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
+      jpa:
+        database: POSTGRESQL
+        show-sql: true
+        hibernate:
+          ddl-auto: update
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+      cloud:
+        stream:
+          bindings:
+            createOrder-out-0:
+              destination: order.exchange
+              content-type: application/json
+          rabbit:
+            bindings:
+              createOrder-out-0:
+                producer:
+                  routing-key-expression: '''order.tracking'''
+      rabbitmq:
+        host: ${RABBITMQ_HOST}
+        port: ${RABBITMQ_PORT}
+        username: ${RABBITMQ_USERNAME}
+        password: ${RABBITMQ_PASSWORD}
+        virtual-host: ${RABBITMQ_VHOST}
+        connection-timeout: 30000
+    user:
+      service:
+        url: http://user-service:8082
+    product:
+      service:
+        url: http://product-service:8081
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+    app:
+      message: "Hello Order"
+    server:
+      port: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+  namespace: ecommerce
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: config-server
+          image: your-dockerhub-username/configserver:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8888
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker,native
+            - name: SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS
+              value: file:/config
+            - name: RABBITMQ_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: app-common-secret
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: app-common-secret
+                  key: RABBITMQ_PORT
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-common-secret
+                  key: RABBITMQ_USERNAME
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-common-secret
+                  key: RABBITMQ_PASSWORD
+            - name: RABBITMQ_VHOST
+              valueFrom:
+                secretKeyRef:
+                  name: app-common-secret
+                  key: RABBITMQ_VHOST
+          volumeMounts:
+            - name: native-config
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            initialDelaySeconds: 40
+            periodSeconds: 10
+      volumes:
+        - name: native-config
+          configMap:
+            name: config-server-native-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+  namespace: ecommerce
+spec:
+  selector:
+    app: config-server
+  ports:
+    - port: 8888
+      targetPort: 8888
