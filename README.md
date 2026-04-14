@@ -1,3 +1,4 @@
+![Blank diagram](https://github.com/user-attachments/assets/2cc37d5e-2250-4394-a0ef-2316e4f57b30)
 # Ecommerce Microservices Project Demo
 An e-commerce backend built with Spring Boot microservices, API Gateway, centralized configuration, JWT authentication with Keycloak, asynchronous messaging with RabbitMQ, and observability using Prometheus, Loki, and Grafana. The system is deployed on Kubernetes.
 
