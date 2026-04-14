@@ -13,7 +13,7 @@ An e-commerce backend built with Spring Boot microservices, API Gateway, central
 - **Prometheus** — metrics collection
 - **Loki + Alloy + Grafana** — log aggregation and visualization
 
-## Authentication flow
+## System Flow
 1. Client authenticates with Keycloak
 2. Keycloak issues a JWT access token
 3. Client sends requests to Gateway with `Authorization: Bearer <token>`
