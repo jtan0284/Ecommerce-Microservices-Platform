@@ -91,8 +91,6 @@ data:
         web:
           exposure:
             include: "*"
-    app:
-      message: "Hello Product"
     server:
       port: 8081
 
@@ -137,8 +135,6 @@ data:
         web:
           exposure:
             include: "*"
-    app:
-      message: "Hello Order"
     server:
       port: 8083
 ---
